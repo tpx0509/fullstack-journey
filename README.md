@@ -6,20 +6,26 @@
 
 ```
 packages/
-├── core/    @fj/core —— 跨包共享的类型与纯函数
-└── app/     @fj/app  —— 应用入口（W2 换成 NestJS，W7 之后接 AI Agent）
+├── core/    @fj/core  —— 错误模型与集合取值（Result / first / second / assertNever）
+├── utils/   @fj/utils —— 纯格式化工具（formatBytes）
+└── app/     @fj/app   —— 应用入口（W2 换成 NestJS，W7 之后接 AI Agent）
 ```
+
+**加包三件套**（少一步就是 `TS2307`）：
+1. `packages/<name>/package.json` 里 `name` 写对，`exports` 指向 `./dist/index.js`
+2. 调用方的 `tsconfig.json` 的 `references` 加 `{ "path": "../<name>" }`
+3. 根 `tsconfig.json` 的 `references` 加该包，然后 `pnpm install` 建链接
 
 ## 常用命令
 
-| 命令 | 作用 |
-|---|---|
-| `pnpm dev` | 起 app，改文件自动重启 |
-| `pnpm build` | tsc -b 增量构建全部包到各自 dist |
-| `pnpm typecheck` | 强制全量类型检查 |
-| `pnpm lint` | ESLint（含类型感知规则） |
-| `pnpm format` | Prettier 格式化 |
-| `pnpm check` | typecheck + lint，提交前跑这个 |
+| 命令             | 作用                             |
+| ---------------- | -------------------------------- |
+| `pnpm dev`       | 起 app，改文件自动重启           |
+| `pnpm build`     | tsc -b 增量构建全部包到各自 dist |
+| `pnpm typecheck` | 强制全量类型检查                 |
+| `pnpm lint`      | ESLint（含类型感知规则）         |
+| `pnpm format`    | Prettier 格式化                  |
+| `pnpm check`     | typecheck + lint，提交前跑这个   |
 
 ## 工程要点
 

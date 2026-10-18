@@ -1,4 +1,5 @@
-import { first, formatBytes, type Result } from '@fj/core';
+import { first, second, type Result } from '@fj/core';
+import { formatBytes } from '@fj/utils';
 
 interface FileStat {
   path: string;
@@ -29,5 +30,6 @@ if (result.ok) {
   console.error(result.error.message);
   process.exitCode = 1;
 }
-
+const num = second([1, 2]);
+console.log('second', num?.toFixed(2));
 console.log(`单文件大小：${formatBytes(demoStats[0]?.size ?? 0)}`);

@@ -197,12 +197,21 @@ importers:
       '@fj/core':
         specifier: workspace:*
         version: link:../core
+      '@fj/utils':
+        specifier: workspace:*
+        version: link:../utils
     devDependencies:
       '@types/node':
         specifier: ^26.6.5
         version: 26.6.5
 
   packages/core:
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.5
+        version: 26.6.5
+
+  packages/utils:
     devDependencies:
       '@types/node':
         specifier: ^26.6.5

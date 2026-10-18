@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@fj/core": "workspace:*"
+    "@fj/core": "workspace:*",
+    "@fj/utils": "workspace:*"
   },
   "scripts": {
     "dev": "node --watch src/index.ts",

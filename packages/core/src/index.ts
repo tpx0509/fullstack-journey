@@ -41,3 +41,6 @@ export const first = <T>(items: readonly T[]): T | undefined => items[0];
 export function assertNever(value: never): never {
   throw new Error(`未处理的分支: ${JSON.stringify(value)}`);
 }
+
+/** 取第2个元素，返回 T | undefined 而不是 T —— 强制调用方处理空数组 */
+export const second = <T>(items: readonly T[]): T | undefined => items[1];
