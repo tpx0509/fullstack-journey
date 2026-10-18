@@ -1,0 +1,15 @@
+packages:
+  - 'packages/*'
+
+# Windows 上 isolated 链接模式创建符号链接常受权限限制，
+# hoisted 用真实目录 + 硬链接，零权限问题，编辑器/工具链兼容性最好。
+nodeLinker: hoisted
+
+# 本机创建目录符号链接被系统策略拦截，workspace 包改用「注入式」安装：
+# pnpm 把依赖包真实拷进 node_modules，不建链接。
+injectWorkspacePackages: true
+
+# pnpm 12 默认不执行依赖的 postinstall 脚本（安全策略）。
+# esbuild 需要在 postinstall 里放置平台二进制，必须显式放行。
+allowBuilds:
+  esbuild: true

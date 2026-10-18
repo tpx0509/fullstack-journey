@@ -1,0 +1,17 @@
+{
+  "name": "@fj/app",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@fj/core": "workspace:*"
+  },
+  "scripts": {
+    "dev": "node --watch src/index.ts",
+    "build": "tsc -b",
+    "start": "node dist/index.js"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    /* ---- 输出目标 ---- */
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    // NodeNext = 严格按 Node 的 ESM/CJS 规则解析。
+    // 后端一律用它；写前端（Next.js/Vite）时换 "bundler"。
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": ["node"],
+
+    /* ---- 类型严格度：这一套才是真正的 strict ---- */
+    "strict": true, // 打开 8 个子开关，核心是 strictNullChecks + noImplicitAny
+    "noUncheckedIndexedAccess": true, // arr[0] 变成 T | undefined，最容易漏的一条
+    "noImplicitOverride": true, // 重写父类方法必须写 override
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+
+    /* ---- 模块行为 ---- */
+    "verbatimModuleSyntax": true, // 类型导入必须写 import type，避免运行时残留 import
+    "isolatedModules": true, // 保证每个文件能被单独转译（esbuild/swc 前提）
+
+    /* ---- 产出 ---- */
+    "declaration": true,
+    "declarationMap": true, // 让编辑器能跳到源码而不是 .d.ts
+    "sourceMap": true,
+    // 注意：rootDir / outDir 故意不写在这里。
+    // extends 里的相对路径是相对「base 文件所在目录」解析的，
+    // 写在这儿会变成仓库根目录的 src/dist，每个包必须自己声明。
+
+    /* ---- 杂项 ---- */
+    "resolveJsonModule": true,
+    "skipLibCheck": true // 不检查 node_modules 里的 .d.ts，纯为速度
+  }
+}
