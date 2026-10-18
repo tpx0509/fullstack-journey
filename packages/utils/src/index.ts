@@ -3,13 +3,6 @@
  * 这一层不依赖任何业务，也不引用 node:http 之外的东西。
  */
 
-/** 显式表达“可能失败”的返回值，比到处 throw 好追踪 */
-export type Result<T, E = Error> = { ok: true; data: T } | { ok: false; error: E };
-
-export const ok = <T>(data: T): Result<T, never> => ({ ok: true, data });
-
-export const fail = <E>(error: E): Result<never, E> => ({ ok: false, error });
-
 /**
  * 人类可读的字节数：1536 → "1.5 KB"
  * 注意 `units[i] ?? 'B'` 这个兜底——打开 noUncheckedIndexedAccess 后，
