@@ -20,6 +20,9 @@
     /* ---- 模块行为 ---- */
     "verbatimModuleSyntax": true, // 类型导入必须写 import type，避免运行时残留 import
     "isolatedModules": true, // 保证每个文件能被单独转译（esbuild/swc 前提）
+    // 源码里写 import './x.ts'（Node 原生跑 TS 要求带真实扩展名），
+    // 编译时自动改写成 './x.js'，这样 node src/main.ts 和 node dist/main.js 都能跑
+    "rewriteRelativeImportExtensions": true,
 
     /* ---- 产出 ---- */
     "declaration": true,

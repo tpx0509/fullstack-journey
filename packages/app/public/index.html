@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>mini server</title>
+    <link rel="stylesheet" href="./app.css" />
+  </head>
+  <body>
+    <h1>静态文件服务跑通了</h1>
+    <p>这个页面由手写的 <code>serveStatic</code> 中间件发出，没有 Express、没有 Koa。</p>
+    <ul>
+      <li><a href="./hello.txt">hello.txt</a>（text/plain，浏览器直接显示）</li>
+      <li><a href="./data.json">data.json</a>（application/json）</li>
+      <li><a href="../health">/health</a>（走路由中间件，不是静态）</li>
+    </ul>
+    <p>按 F12 看 Network：响应头里的 <code>ETag</code>、<code>Content-Length</code>、<code>Cache-Control</code> 都是手写的。</p>
+  </body>
+</html>

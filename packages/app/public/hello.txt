@@ -1,0 +1,2 @@
+这是通过手写静态文件服务发出的纯文本。
+Content-Type: text/plain; charset=utf-8 —— 中文不会乱码，靠的就是 charset 声明。

@@ -9,6 +9,9 @@
   },
   "scripts": {
     "dev": "node --watch src/index.ts",
+    "dev:server": "node --watch src/main.ts",
+    "start:server": "node dist/main.js",
+    "smoke": "node src/smoke.ts",
     "build": "tsc -b",
     "start": "node dist/index.js"
   },

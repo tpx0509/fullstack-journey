@@ -1,0 +1,5 @@
+{
+  "note": "静态 JSON 文件，验证 application/json 的 MIME 映射",
+  "items": [1, 2, 3],
+  "nested": { "ok": true }
+}
