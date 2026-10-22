@@ -105,9 +105,8 @@ export class Router {
 
       return { handler: route.handler, params };
     }
-
     if (pathMatched) {
-      // 4096 是 RFC 9110 规定的标准响应头，列出该资源支持的方法
+      // 405 必须带 Allow 头（RFC 9110 §15.5.6），列出该资源支持的方法
       return { allow: [...allow, ...(allow.has('GET') ? ['HEAD'] : [])] };
     }
     return null;

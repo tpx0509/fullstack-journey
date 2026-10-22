@@ -221,6 +221,16 @@ const checks: Check[] = [
     },
   },
   {
+    name: 'GET /assets（无尾斜杠）→ 301 到 /assets/',
+    run: async (base) => {
+      // redirect: 'manual' 才能看到 301 本身，否则 fetch 会自动跟随到 200
+      const res = await fetch(`${base}/assets`, { redirect: 'manual' });
+      assert.equal(res.status, 301);
+      assert.equal(res.headers.get('location'), '/assets/');
+      return `301 → /assets/`;
+    },
+  },
+  {
     name: 'GET /assets/%2e%2e%2fsecret.txt → 403 目录穿越被拦',
     run: async (base) => {
       const res = await fetch(`${base}/assets/%2e%2e%2fsecret.txt`);

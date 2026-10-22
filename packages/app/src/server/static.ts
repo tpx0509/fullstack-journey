@@ -69,11 +69,19 @@ export function serveStatic(options: StaticOptions): Middleware {
       throw new HttpError(400, 'URL 编码非法', 'BAD_PATH_ENCODING');
     }
 
+    // 三步各管一件事，顺序不能换：
+    // ① 补前导 /：把 URL 路径统一成 "/xxx" 形态。但空串不能补——
+    //    空串意味着请求正好命中前缀本身（/assets），必须留给下面的目录分支发 301。
+    //    补成 "/" 会被 ② 变成 index.html，浏览器 base 停在 /assets，
+    //    页面里的 ./app.css 就解析到 /app.css 了。
+    // ② 结尾是 / 说明是目录，补 index.html。
+    // ③ 剥掉前导 /：path.resolve 会把 "/xxx" 当盘符根绝对路径，root 直接被顶掉，
+    //    目录穿越防护会因此 403 掉所有合法请求。
     let relative = prefix === '/' ? decoded : decoded.slice(prefix.length);
-    if (!relative.startsWith('/')) relative = `/${relative}`;
+    if (relative !== '' && !relative.startsWith('/')) relative = `/${relative}`;
     if (relative.endsWith('/')) relative += 'index.html';
     relative = relative.replace(/^\/+/, '');
-
+    console.log('relative',relative)
     const target = path.resolve(root, relative);
 
     // 关键防线：解析后的真实路径必须仍在 root 之内。
