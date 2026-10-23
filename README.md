@@ -12,7 +12,7 @@ packages/
     ├── src/server/    —— context / compose / router / body / static：不依赖任何框架的 HTTP 内核
     ├── src/app.ts     —— 路由表与中间件顺序（定义）
     ├── src/main.ts    —— 监听端口（运行）
-    ├── src/smoke.ts   —— 19 条真实请求的验证脚本
+    ├── src/smoke.ts   —— 26 条真实请求的验证脚本
     └── public/        —— 静态资源根，`/assets` 前缀暴露
 ```
 
@@ -27,12 +27,24 @@ packages/
 | ------------------------------------- | -------------------------------- |
 | `pnpm dev`                            | 起 app，改文件自动重启           |
 | `pnpm --filter @fj/app dev:server`    | 起 mini HTTP 服务器 :3000        |
-| `pnpm --filter @fj/app smoke`         | 19 条 HTTP 行为验证（起临时端口） |
+| `pnpm --filter @fj/app smoke`         | 26 条 HTTP 行为验证（起临时端口） |
 | `pnpm build`                          | tsc -b 增量构建全部包到各自 dist |
 | `pnpm typecheck`                      | 强制全量类型检查                 |
 | `pnpm lint`                           | ESLint（含类型感知规则）         |
 | `pnpm format`                         | Prettier 格式化                  |
 | `pnpm check`                          | typecheck + lint，提交前跑这个   |
+
+## mini HTTP 服务器能力
+
+| 能力 | 位置 | 说明 |
+| ---- | ---- | ---- |
+| 路由 + 参数捕获 | `server/router.ts` | `/users/:id` 编译成正则，405 与 404 分工 |
+| body 解析 | `server/body.ts` | JSON / urlencoded，1MB 上限，超限 413（linger drain 保证客户端能读到） |
+| 静态文件 | `server/static.ts` | 目录穿越防护、ETag/304、**Range 断点续传（206/416）** |
+| 中间件洋葱 | `server/compose.ts` | 15 行，进入正序 / 退出逆序，防重复 next() |
+| 统一错误出口 | `server/index.ts` | HttpError 用自带状态码，其余 500 |
+
+Range 支持的三种写法：`bytes=0-499`（显式区间）、`bytes=500-`（到结尾）、`bytes=-500`（末尾 500 字节）。语法错误或多段范围按 RFC 9110 忽略，退化成 200 整个文件；只有「语法正确但越界」才回 416 + `Content-Range: bytes */总长度`。
 
 ## 工程要点
 

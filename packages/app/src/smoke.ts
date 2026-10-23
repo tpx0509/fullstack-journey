@@ -267,6 +267,96 @@ const checks: Check[] = [
     },
   },
   {
+    name: 'GET + Range: bytes=0-9 → 206 前 10 字节',
+    run: async (base) => {
+      const fullRes = await fetch(`${base}/assets/hello.txt`);
+      const fullBuf = Buffer.from(await fullRes.arrayBuffer());
+      assert.equal(fullRes.headers.get('accept-ranges'), 'bytes');
+
+      const res = await fetch(`${base}/assets/hello.txt`, { headers: { range: 'bytes=0-9' } });
+      assert.equal(res.status, 206);
+      assert.equal(res.headers.get('content-range'), `bytes 0-9/${fullBuf.length}`);
+      // Content-Length 必须是"这一段"的长度，不是文件总长度
+      assert.equal(res.headers.get('content-length'), '10');
+      const part = Buffer.from(await res.arrayBuffer());
+      assert.deepEqual(part, fullBuf.subarray(0, 10));
+      return `206 10/${fullBuf.length} bytes`;
+    },
+  },
+  {
+    name: 'GET + Range: bytes=-20 → 206 末尾 20 字节',
+    run: async (base) => {
+      const fullBuf = Buffer.from(
+        await (await fetch(`${base}/assets/hello.txt`)).arrayBuffer(),
+      );
+      const res = await fetch(`${base}/assets/hello.txt`, { headers: { range: 'bytes=-20' } });
+      assert.equal(res.status, 206);
+      const start = fullBuf.length - 20;
+      assert.equal(
+        res.headers.get('content-range'),
+        `bytes ${start}-${fullBuf.length - 1}/${fullBuf.length}`,
+      );
+      const part = Buffer.from(await res.arrayBuffer());
+      assert.deepEqual(part, fullBuf.subarray(start));
+      return `206 尾部 20 bytes`;
+    },
+  },
+  {
+    name: 'GET + Range: bytes=100- → 206 从 100 到结尾',
+    run: async (base) => {
+      const fullBuf = Buffer.from(
+        await (await fetch(`${base}/assets/hello.txt`)).arrayBuffer(),
+      );
+      const res = await fetch(`${base}/assets/hello.txt`, { headers: { range: 'bytes=100-' } });
+      assert.equal(res.status, 206);
+      const part = Buffer.from(await res.arrayBuffer());
+      assert.deepEqual(part, fullBuf.subarray(100));
+      return `206 ${part.length} bytes`;
+    },
+  },
+  {
+    name: 'GET + Range 超出文件 → 416 + Content-Range: bytes */size',
+    run: async (base) => {
+      const fullBuf = Buffer.from(
+        await (await fetch(`${base}/assets/hello.txt`)).arrayBuffer(),
+      );
+      const res = await fetch(`${base}/assets/hello.txt`, { headers: { range: 'bytes=999999-' } });
+      assert.equal(res.status, 416);
+      assert.equal(res.headers.get('content-range'), `bytes */${fullBuf.length}`);
+      await res.arrayBuffer();
+      return `416 bytes */${fullBuf.length}`;
+    },
+  },
+  {
+    name: 'GET + Range 语法错误/多段 → 忽略，回 200 整个文件',
+    run: async (base) => {
+      const fullBuf = Buffer.from(
+        await (await fetch(`${base}/assets/hello.txt`)).arrayBuffer(),
+      );
+      for (const range of ['bytes=0-1,5-6', 'items=0-1', 'bytes=abc-def']) {
+        const res = await fetch(`${base}/assets/hello.txt`, { headers: { range } });
+        assert.equal(res.status, 200, `${range} 应该被忽略`);
+        const buf = Buffer.from(await res.arrayBuffer());
+        assert.equal(buf.length, fullBuf.length);
+      }
+      return `3 种非法 Range 全部降级为 200`;
+    },
+  },
+  {
+    name: 'HEAD + Range → 206 有头无体，Content-Length 是段长',
+    run: async (base) => {
+      const res = await fetch(`${base}/assets/hello.txt`, {
+        method: 'HEAD',
+        headers: { range: 'bytes=0-9' },
+      });
+      assert.equal(res.status, 206);
+      assert.equal(res.headers.get('content-length'), '10');
+      assert.match(res.headers.get('content-range') ?? '', /^bytes 0-9\/\d+$/);
+      assert.equal(await res.text(), '');
+      return `206 head-only len=10`;
+    },
+  },
+  {
     name: 'DELETE /users/1 → 204 无响应体',
     run: async (base) => {
       const res = await fetch(`${base}/users/1`, { method: 'DELETE' });
