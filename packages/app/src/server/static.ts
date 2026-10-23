@@ -36,6 +36,61 @@ export interface StaticOptions {
   maxAge?: number;
 }
 
+/** 解析结果：null = 按整个文件处理（没带 Range 或无法理解），'unsatisfiable' = 该回 416 */
+type RangeResult = { start: number; end: number } | 'unsatisfiable' | null;
+
+/**
+ * 解析 Range 请求头，只支持单段 bytes。
+ *
+ * 三种合法写法：
+ *   bytes=0-499   显式区间
+ *   bytes=500-    从 500 到结尾
+ *   bytes=-500    最后 500 字节（注意 start 为空）
+ *
+ * 按 RFC 9110，语法错误或无法理解的单位应该**忽略**并按 200 返回整个文件，
+ * 只有"语法正确但范围超出文件"才是 416。这个区分容易被写反。
+ */
+export function parseRange(header: string | undefined, size: number): RangeResult {
+  if (!header) return null;
+
+  const match = /^bytes=(.+)$/i.exec(header.trim());
+  if (!match?.[1]) return null; // 其它单位（比如 items=）不认识，忽略
+
+  const spec = match[1].trim();
+  // 多段范围（bytes=0-1,5-6）要做 multipart/byteranges，实现成本高收益低。
+  // 直接忽略 Range 回整个文件，这是规范允许的，也是最省事的选择。
+  if (spec.includes(',')) return null;
+
+  const parts = spec.split('-');
+  if (parts.length !== 2) return null;
+  const [rawStart, rawEnd] = parts;
+  if (rawStart === undefined || rawEnd === undefined) return null;
+
+  if (rawStart === '') {
+    // bytes=-500：取末尾 N 字节
+    const suffix = Number(rawEnd);
+    if (!Number.isInteger(suffix) || suffix <= 0) return null;
+    if (size === 0) return 'unsatisfiable';
+    return { start: Math.max(0, size - suffix), end: size - 1 };
+  }
+
+  const start = Number(rawStart);
+  if (!Number.isInteger(start) || start < 0) return null;
+
+  let end: number;
+  if (rawEnd === '') {
+    end = size - 1;
+  } else {
+    const parsed = Number(rawEnd);
+    if (!Number.isInteger(parsed) || parsed < 0) return null;
+    // 客户端要的结尾超出文件长度时，截到最后一个字节，不是报错
+    end = Math.min(parsed, size - 1);
+  }
+
+  if (start >= size || start > end) return 'unsatisfiable';
+  return { start, end };
+}
+
 /**
  * 静态文件中间件。
  *
@@ -81,7 +136,6 @@ export function serveStatic(options: StaticOptions): Middleware {
     if (relative !== '' && !relative.startsWith('/')) relative = `/${relative}`;
     if (relative.endsWith('/')) relative += 'index.html';
     relative = relative.replace(/^\/+/, '');
-    console.log('relative',relative)
     const target = path.resolve(root, relative);
 
     // 关键防线：解析后的真实路径必须仍在 root 之内。
@@ -113,6 +167,8 @@ export function serveStatic(options: StaticOptions): Middleware {
     ctx.header('ETag', etag);
     ctx.header('Last-Modified', info.mtime.toUTCString());
     ctx.header('Cache-Control', maxAge > 0 ? `public, max-age=${maxAge}` : 'no-cache');
+    // 主动声明支持字节范围：播放器、下载器靠这个头判断能不能断点续传/拖进度条
+    ctx.header('Accept-Ranges', 'bytes');
 
     // 协商缓存：内容没变就不发正文，只回 304。带宽省下来的就是响应速度
     if (ctx.req.headers['if-none-match'] === etag) {
@@ -120,11 +176,46 @@ export function serveStatic(options: StaticOptions): Middleware {
       return;
     }
 
+    // Range 必须在 304 之后判断：内容都没变，切哪一段没意义
+    const range = parseRange(ctx.req.headers.range, info.size);
+
+    if (range === 'unsatisfiable') {
+      // 416 必须带 Content-Range: bytes */总长度，
+      // 客户端才能知道文件到底多大、自己是不是要过头了
+      ctx.header('Content-Range', `bytes */${info.size}`);
+      ctx.header('Content-Length', 0);
+      ctx.res.statusCode = 416;
+      ctx.markSent();
+      ctx.res.end();
+      return;
+    }
+
+    // 关键：Content-Length 是"这一段"的长度，不是文件总长度。
+    // 写成 info.size 会让客户端一直等剩余字节，最后超时或数据错位。
+    const start = range?.start ?? 0;
+    const end = range?.end ?? info.size - 1;
+    const length = range ? end - start + 1 : info.size;
+
     ctx.header('Content-Type', MIME[path.extname(target).toLowerCase()] ?? 'application/octet-stream');
-    ctx.header('Content-Length', info.size);
-    ctx.res.statusCode = 200;
+    ctx.header('Content-Length', length);
+
+    if (range) {
+      // 206 的三个条件：状态码 206 + Content-Range + 正确的 Content-Length，缺一不可
+      ctx.header('Content-Range', `bytes ${start}-${end}/${info.size}`);
+      ctx.res.statusCode = 206;
+    } else {
+      ctx.res.statusCode = 200;
+    }
 
     if (ctx.method === 'HEAD') {
+      // HEAD 带 Range 也要回 206 + Content-Range，只是不发正文
+      ctx.markSent();
+      ctx.res.end();
+      return;
+    }
+
+    // 空文件没有可读区间，createReadStream 传 start/end 会出错，直接收尾
+    if (info.size === 0) {
       ctx.markSent();
       ctx.res.end();
       return;
@@ -133,7 +224,8 @@ export function serveStatic(options: StaticOptions): Middleware {
     // 流式发送：内存恒定，首字节立即可达
     ctx.markSent();
     try {
-      await pipeline(createReadStream(target), ctx.res);
+      // 传 start/end 让内核只读这一段，不会把整个文件读进内存再截取
+      await pipeline(createReadStream(target, { start, end }), ctx.res);
     } catch (error) {
       // 客户端中途断开（下载被取消）会抛 ERR_STREAM_PREMATURE_CLOSE，
       // 这属于正常现象，响应头早就发出去了，也没有第二次机会补救

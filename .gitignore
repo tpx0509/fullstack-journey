@@ -1,6 +1,10 @@
 node_modules/
 dist/
 *.log
+
+# 本地测试用的媒体大文件，别提交（GitHub 单文件 100MB 硬上限）
+packages/app/public/*.mp4
+packages/app/public/*.MP4
 .env
 .env.*
 !.env.example
